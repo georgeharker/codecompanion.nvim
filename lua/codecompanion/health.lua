@@ -16,26 +16,14 @@ M.deps = {
 }
 
 M.parsers = {
-  {
-    name = "markdown",
-  },
-  {
-    name = "yaml",
-  },
+  { name = "markdown" },
+  { name = "yaml" },
 }
 
 M.libraries = {
-  {
-    name = "curl",
-  },
-  {
-    name = "base64",
-    optional = true,
-  },
-  {
-    name = "rg",
-    optional = true,
-  },
+  { name = "curl" },
+  { name = "file", optional = true }, -- used to guess mimetype for multimodal.
+  { name = "rg", optional = true },
 }
 
 M.adapters = {

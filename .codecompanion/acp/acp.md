@@ -57,12 +57,14 @@ local prompt = PromptBuilder.new(connection, messages)
 
 #### ACP Handlers
 
-@./lua/codecompanion/strategies/chat/acp/handler.lua
-@./lua/codecompanion/strategies/chat/acp/request_permission.lua
+@./lua/codecompanion/interactions/chat/acp/handler.lua
+@./lua/codecompanion/interactions/chat/acp/request_permission.lua
+@./lua/codecompanion/interactions/chat/acp/formatters.lua
 
 Chat-specific ACP integration:
 - `handler.lua` - Main chat buffer ACP handler
 - `request_permission.lua` - Interactive permission request UI
+- `formatters.lua` - Formats the ACP output and returns it to the handler to work with
 
 ## Message Flow
 
@@ -248,6 +250,10 @@ Google's Gemini CLI agent with:
 - Code generation and analysis
 - Multi-modal support
 
+### OpenAI's Codex
+
+Fully support OpenAI's Codex.
+
 ## File System Integration
 
 ACP agents can interact with the file system through standardized methods:
@@ -257,7 +263,7 @@ ACP agents can interact with the file system through standardized methods:
 
 All file operations require user permission and show diffs when applicable. The file containing this logic is:
 
-@./lua/codecompanion/strategies/chat/acp/fs.lua
+@./lua/codecompanion/interactions/chat/acp/fs.lua
 
 ## Error Handling
 
