@@ -140,6 +140,13 @@ function CLI.create(args)
   return self
 end
 
+---Return a CLI instance by bufnr, or nil if the bufnr is not a CLI buffer
+---@param bufnr number
+---@return CodeCompanion.CLI|nil
+function CLI.buf_get_cli(bufnr)
+  return clis[bufnr]
+end
+
 ---Return the last-used CLI instance, or nil if none exist
 ---@return CodeCompanion.CLI|nil
 function CLI.last_cli()

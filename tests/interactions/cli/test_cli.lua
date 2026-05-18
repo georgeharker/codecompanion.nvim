@@ -96,6 +96,49 @@ T["CLI"]["create() allows multiple instances of the same agent"] = function()
   h.eq(true, result.different_bufnr)
 end
 
+T["CLI"]["buf_get_cli() returns the instance for a known bufnr"] = function()
+  local result = child.lua([[
+    local cli = require("codecompanion.interactions.cli")
+    local a = cli.create({ agent = "test_agent_a" })
+    local b = cli.create({ agent = "test_agent_b" })
+    local found_a = cli.buf_get_cli(a.bufnr)
+    local found_b = cli.buf_get_cli(b.bufnr)
+    return {
+      a_found = found_a and found_a.bufnr == a.bufnr,
+      b_found = found_b and found_b.bufnr == b.bufnr,
+      a_agent = found_a and found_a.agent_name,
+      b_agent = found_b and found_b.agent_name,
+    }
+  ]])
+
+  h.eq(true, result.a_found)
+  h.eq(true, result.b_found)
+  h.eq("test_agent_a", result.a_agent)
+  h.eq("test_agent_b", result.b_agent)
+end
+
+T["CLI"]["buf_get_cli() returns nil for unknown bufnr"] = function()
+  local result = child.lua([[
+    local cli = require("codecompanion.interactions.cli")
+    cli.create({ agent = "test_agent_a" })
+    return cli.buf_get_cli(99999) == nil
+  ]])
+
+  h.eq(true, result)
+end
+
+T["CLI"]["buf_get_cli() returns nil after the CLI is closed"] = function()
+  local result = child.lua([[
+    local cli = require("codecompanion.interactions.cli")
+    local instance = cli.create({ agent = "test_agent_a" })
+    local bufnr = instance.bufnr
+    instance:close()
+    return cli.buf_get_cli(bufnr) == nil
+  ]])
+
+  h.eq(true, result)
+end
+
 T["CLI"]["last_cli() returns the most recently created instance"] = function()
   local result = child.lua([[
     local cli = require("codecompanion.interactions.cli")

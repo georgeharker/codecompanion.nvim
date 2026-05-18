@@ -294,6 +294,13 @@ CodeCompanion.buf_get_chat = function(bufnr)
   return require("codecompanion.interactions.chat").buf_get_chat(bufnr)
 end
 
+---Return a CLI instance by bufnr
+---@param bufnr number
+---@return CodeCompanion.CLI|nil
+CodeCompanion.buf_get_cli = function(bufnr)
+  return require("codecompanion.interactions.cli").buf_get_cli(bufnr)
+end
+
 ---Get the last chat buffer
 ---@return CodeCompanion.Chat|nil
 CodeCompanion.last_chat = function()
