@@ -37,6 +37,98 @@ T["Terminal provider"]["start() returns true with a valid command"] = function()
   h.eq("number", result.chan_type)
 end
 
+T["Terminal provider"]["fires CLIPreStart / CLIStarted before/after jobstart"] = function()
+  local result = child.lua([[
+    local Terminal = require("codecompanion.interactions.cli.providers.terminal")
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    local events = {}
+
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "CodeCompanionCLIPreStart",
+      callback = function(args)
+        table.insert(events, { name = "pre", bufnr = args.data.bufnr })
+      end,
+    })
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "CodeCompanionCLIStarted",
+      callback = function(args)
+        table.insert(events, { name = "started", bufnr = args.data.bufnr, chan = type(args.data.chan) })
+      end,
+    })
+
+    local provider = Terminal.new({
+      bufnr = bufnr,
+      agent = { cmd = "cat", args = {} },
+    })
+    provider:start()
+    return { events = events, bufnr = bufnr }
+  ]])
+
+  h.eq(2, #result.events)
+  h.eq("pre", result.events[1].name)
+  h.eq(result.bufnr, result.events[1].bufnr)
+  h.eq("started", result.events[2].name)
+  h.eq(result.bufnr, result.events[2].bufnr)
+  h.eq("number", result.events[2].chan)
+end
+
+T["Terminal provider"]["CLIPreStart subscribers can prepend/append args and set env"] = function()
+  local result = child.lua([[
+    local Terminal = require("codecompanion.interactions.cli.providers.terminal")
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    local seen
+
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "CodeCompanionCLIPreStart",
+      callback = function(args)
+        args.data.prepend_args({ "--first" })
+        args.data.append_args({ "--last" })
+        args.data.set_env("INJECTED_VAR", "yes")
+        seen = { agent_name = args.data.agent and args.data.agent.cmd }
+      end,
+    })
+
+    local provider = Terminal.new({
+      bufnr = bufnr,
+      agent = { cmd = "cat", args = { "--middle" } },
+    })
+    provider:start()
+    return { seen = seen, ran = provider.chan ~= nil }
+  ]])
+
+  h.eq(true, result.ran)
+  h.eq("cat", result.seen.agent_name)
+end
+
+T["Terminal provider"]["fires CLIExited when the subprocess exits"] = function()
+  local result = child.lua([[
+    local Terminal = require("codecompanion.interactions.cli.providers.terminal")
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    local exited = nil
+
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "CodeCompanionCLIExited",
+      callback = function(args)
+        exited = { bufnr = args.data.bufnr, exit_code = args.data.exit_code }
+      end,
+    })
+
+    local provider = Terminal.new({
+      bufnr = bufnr,
+      -- /bin/true exits immediately with 0
+      agent = { cmd = "true", args = {} },
+    })
+    provider:start()
+
+    vim.wait(2000, function() return exited ~= nil end)
+    return { exited = exited, bufnr = bufnr }
+  ]])
+
+  h.eq("table", type(result.exited))
+  h.eq(result.bufnr, result.exited.bufnr)
+  h.eq(0, result.exited.exit_code)
+end
+
 T["Terminal provider"]["start() returns false with an invalid command"] = function()
   local result = child.lua([[
     local Terminal = require("codecompanion.interactions.cli.providers.terminal")

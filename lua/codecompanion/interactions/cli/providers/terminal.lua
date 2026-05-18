@@ -3,6 +3,7 @@
 
 local Queue = require("codecompanion.utils.queue")
 local log = require("codecompanion.utils.log")
+local utils = require("codecompanion.utils")
 
 local api = vim.api
 
@@ -44,18 +45,50 @@ end
 ---Start the terminal process and begin polling for readiness
 ---@return boolean
 function Terminal:start()
-  local cmd = vim.deepcopy(self.agent.args or {})
+  local args = vim.deepcopy(self.agent.args or {})
+  local env = {}
+
+  -- Fire CLIPreStart so extensions can adjust argv / env before jobstart.
+  -- Autocmd `data` does not propagate mutations back to the caller, so we
+  -- pass closures over our local args/env tables for subscribers to call.
+  utils.fire("CLIPreStart", {
+    bufnr = self.bufnr,
+    agent = self.agent,
+    prepend_args = function(extra)
+      for i = #extra, 1, -1 do
+        table.insert(args, 1, extra[i])
+      end
+    end,
+    append_args = function(extra)
+      for _, v in ipairs(extra) do
+        table.insert(args, v)
+      end
+    end,
+    set_env = function(key, value)
+      env[key] = value
+    end,
+  })
+
+  local cmd = vim.deepcopy(args)
   table.insert(cmd, 1, self.agent.cmd)
+
+  local job_env = next(env) and env or nil
 
   local ok, err = pcall(function()
     api.nvim_buf_call(self.bufnr, function()
       self.chan = vim.fn.jobstart(cmd, {
         term = true,
         cwd = vim.fn.getcwd(),
+        env = job_env,
         on_exit = function(_, exit_code, _)
           log:debug("CLI agent exited with code %d", exit_code)
           self.chan = nil
           self:_close_timers()
+          utils.fire("CLIExited", {
+            bufnr = self.bufnr,
+            agent = self.agent,
+            exit_code = exit_code,
+          })
         end,
       })
     end)
@@ -69,6 +102,12 @@ function Terminal:start()
   if not self.chan or self.chan <= 0 then
     return false
   end
+
+  utils.fire("CLIStarted", {
+    bufnr = self.bufnr,
+    agent = self.agent,
+    chan = self.chan,
+  })
 
   self:_poll_until_ready()
 
@@ -173,6 +212,11 @@ function Terminal:_on_ready()
   if not self.queue:is_empty() then
     self:_consume()
   end
+
+  utils.fire("CLIReady", {
+    bufnr = self.bufnr,
+    agent = self.agent,
+  })
 end
 
 ---Start consuming queued items at a fixed interval
